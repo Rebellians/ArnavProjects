@@ -1,0 +1,77 @@
+---
+title: "2094FinalProject"
+author: "Arnav Gupta"
+date: "2025-05-03"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+#loading the required libraries
+library(gapminder)
+library(ggplot2)
+library(dplyr)
+
+#filtering data from Gapminder to only include data from 2007, the most recent year in the dataset
+data("gapminder")
+gapminder_recent <- gapminder %>% filter(year == max(year))
+```
+
+```{r}
+#summary function provides descriptive statistics on GDP (per country),
+#life exp (per country), and popoulation (per country)
+summary(gapminder_recent$lifeExp)
+summary(gapminder_recent$gdpPercap)
+summary(gapminder_recent$pop)
+```
+
+```{r}
+# Avg life exp by continent
+aggregate(lifeExp ~ continent, data = gapminder_recent, FUN = mean)
+```
+
+```{r}
+# stdev of life exp by continent, not egrigiously different, okay to perform Tukey's HSD later
+aggregate(lifeExp ~ continent, data = gapminder_recent, FUN = sd)
+```
+
+```{r}
+#ggplot below visualizes the relationship between gdp per cap and life exp
+ggplot(gapminder_recent, aes(x = gdpPercap, y = lifeExp)) +
+  geom_point(aes(color = continent)) +
+  geom_smooth(method = "lm", se = FALSE, color = "red") +
+  facet_wrap(~ continent) + #facet_wrap helps better visualize above relationship per continent
+  scale_x_log10() +  # log scale on x-axis so points are not clustered
+  labs(title = "Life Expectancy vs GDP per Capita by Continent",
+       x = "GDP per Capita",
+       y = "Life Expectancy") +
+  theme_minimal()
+```
+
+```{r}
+#Conducted pearson's correlation to quantify the strengh of the linear relationship
+#seen in the ggplot above
+gapminder_recent %>%
+  group_by(continent) %>%
+  summarise(correlation = cor(gdpPercap, lifeExp, method = "pearson"))
+```
+
+```{r}
+#multiple linear regression model calculating relationship of life expectancy as a 
+#result of gdp per cap, continent, and population
+gapminder_recent$continent <- as.factor(gapminder_recent$continent)
+model <- lm(lifeExp ~ gdpPercap + pop + continent, data = gapminder_recent)
+summary(model)
+```
+
+```{r}
+#The multiple lm model above uses Africa as the reference groups and compares 
+#all other continents to it
+#Conducting Tukey's HSD allows to compare mean life expectancy 
+#between every continent
+aov_model = aov(formula = lifeExp ~ continent, data = gapminder_recent)
+TukeyHSD(aov_model)
+```
